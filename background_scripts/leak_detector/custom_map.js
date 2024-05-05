@@ -1,105 +1,33 @@
-(p =
-  Array.isArray ||
-  function (t) {
-    return "[object Array]" === Object.prototype.toString.apply(t);
-  }),
-  (b = function (t) {
-    return "string" == typeof t;
-  }),
-  (g = function (t) {
-    return (
-      "function" == typeof t ||
-      "[object Function]" === Object.prototype.toString.apply(t)
-    );
-  }),
-  (A = function (t, r) {
-    var n, o, e;
-    if (t && g(r))
-      if (p(t))
-        for (
-          o = 0, e = t.length;
-          o < e && ((n = t[o]), !1 !== r.call(n, o, n));
-          o++
-        );
-      else if (b(t))
-        for (
-          o = 0, e = t.length;
-          o < e && ((n = t.charAt(o)), !1 !== r.call(n, o, n));
-          o++
-        );
-      else
-        for (o in t)
-          if (t.hasOwnProperty(o) && ((n = t[o]), !1 === r.call(n, o, n)))
-            break;
-    return t;
-  }),
-  (custom_map_enc = function (t, r) {
-    var n,
-      o,
-      e,
-      c = [];
-    return (
-      (n = "kibp8A4EWRMKHa7gvyz1dOPt6UI5xYD3nqhVwZBXfCcFeJmrLN20lS9QGsjTuo"),
-      (o = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"),
-      r &&
-        ((n = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"),
-        (o = "kibp8A4EWRMKHa7gvyz1dOPt6UI5xYD3nqhVwZBXfCcFeJmrLN20lS9QGsjTuo")),
-      A(t, function (r) {
-        c.push((r = n.indexOf((e = t.charAt(r)))) < 0 ? e : o.charAt(r));
-      }),
-      c.join("")
-    );
-  });
+const typeOf = (t) =>
+  ["object", "function"].includes(typeof t)
+    ? Object.prototype.toString.call(t).slice(8, -1)
+    : typeof t;
 
-(p =
-  Array.isArray ||
-  function (t) {
-    return "[object Array]" === Object.prototype.toString.apply(t);
-  }),
-  (b = function (t) {
-    return "string" == typeof t;
-  }),
-  (g = function (t) {
-    return (
-      "function" == typeof t ||
-      "[object Function]" === Object.prototype.toString.apply(t)
-    );
-  }),
-  (A = function (t, r) {
-    var n, o, e;
-    if (t && g(r))
-      if (p(t))
-        for (
-          o = 0, e = t.length;
-          o < e && ((n = t[o]), !1 !== r.call(n, o, n));
-          o++
-        );
-      else if (b(t))
-        for (
-          o = 0, e = t.length;
-          o < e && ((n = t.charAt(o)), !1 !== r.call(n, o, n));
-          o++
-        );
-      else
-        for (o in t)
-          if (t.hasOwnProperty(o) && ((n = t[o]), !1 === r.call(n, o, n)))
-            break;
-    return t;
-  }),
-  (custom_map_dec = function (t, r) {
-    var n,
-      o,
-      e,
-      c = [];
-    return (
-      (n = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"),
-      (o = "kibp8A4EWRMKHa7gvyz1dOPt6UI5xYD3nqhVwZBXfCcFeJmrLN20lS9QGsjTuo"),
-      r &&
-        ((n = "kibp8A4EWRMKHa7gvyz1dOPt6UI5xYD3nqhVwZBXfCcFeJmrLN20lS9QGsjTuo"),
-        (o = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")),
-      A(t, function (r) {
-        c.push((r = n.indexOf((e = t.charAt(r)))) < 0 ? e : o.charAt(r));
-      }),
-      c.join("")
-    );
-  });
+const A = (t, r, encode = true) => {
+  const n = "kibp8A4EWRMKHa7gvyz1dOPt6UI5xYD3nqhVwZBXfCcFeJmrLN20lS9QGsjTuo";
+  const o = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  let e, c = [];
+
+  if (typeOf(t) === "String") {
+    for (let i = 0, l = t.length; i < l; i++) {
+      e = t.charAt(i);
+      c.push(encode ? n.charAt(o.indexOf(e)) : o.charAt(n.indexOf(e)));
+    }
+  } else if (typeOf(t) === "Array" || typeOf(t) === "Object") {
+    for (let i in t) {
+      if (t.hasOwnProperty(i)) {
+        e = t[i];
+        c.push(A(e, r, encode));
+      }
+    }
+  } else if (typeOf(t) === "Function") {
+    for (let i = 0, l = t.length; i < l; i++) {
+      e = t(i);
+      c.push(A(e, r, encode));
+    }
+  }
+
+  return c.join("");
+};
+
+const customMap = (t, r, encode = true) => A(t, r, encode);
