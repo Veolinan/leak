@@ -1,15 +1,17 @@
+const RE_V4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+const RE_V4_HEX = /^([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}$/;
+const RE_V4_NUMERIC = /^(?:[0-9]+:){7}[0-9]+$/;
+
 const decodeRequestBody = (data) => {
   let decodedBody;
   const dataBytes = new Uint8Array(data.bytes);
   try {
-    decodedBody = decodeURIComponent(
-      String.fromCharCode.apply(null, dataBytes)
-    );
+    decodedBody = decodeURIComponent(String.fromCharCode.apply(null, dataBytes));
   } catch (error) {
     try {
       decodedBody = new TextDecoder().decode(dataBytes);
     } catch (error) {
-      console.log(`ERROR in decodeRequestBody: ${error}`);
+      console.error(`ERROR in decodeRequestBody: ${error}`);
     }
   }
   return decodedBody;
@@ -17,7 +19,9 @@ const decodeRequestBody = (data) => {
 
 const getHostName = (url) => new URL(url).hostname;
 
-const getBaseDomainFromUrl = (url) => getBaseDomain(getHostName(url));
+const getBaseDomain = (hostname) => {
+  // ...
+};
 
 const isIPv4 = (address) => {
   if (RE_V4.test(address)) {
@@ -33,10 +37,6 @@ const isIPv4 = (address) => {
 };
 
 const isIPv6 = (address) => {
-  // ...
-};
-
-const getBaseDomain = (hostname) => {
   // ...
 };
 
