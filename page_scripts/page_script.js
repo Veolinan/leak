@@ -1,17 +1,32 @@
 let minLogoPath;
 
 function sendMessageToContentScript(message, eventName) {
-  document.dispatchEvent(
-    new CustomEvent(eventName, { detail: message })
-  );
+  try {
+    document.dispatchEvent(
+      new CustomEvent(eventName, { detail: message })
+    );
+  } catch (error) {
+    console.error("Error dispatching event: ", error);
+  }
 }
 
 document.addEventListener("modifyInputElementSetterGetter", function (e) {
-  let inputElement = getElementByXpath(e.detail);
-  let realHTMLInputElement = Object.getOwnPropertyDescriptor(
+  const inputElement = getElementByXpath(e.detail);
+  if (!inputElement) {
+    console.error("Input element not found");
+    return;
+  }
+
+  const realHTMLInputElement = Object.getOwnPropertyDescriptor(
     HTMLInputElement.prototype,
     "value"
   );
+
+  if (!realHTMLInputElement) {
+    console.error("Real HTML input element not found");
+    return;
+  }
+
   Object.defineProperty(inputElement, "value", {
     enumerable: true,
     configurable: true,
@@ -22,16 +37,33 @@ document.addEventListener("modifyInputElementSetterGetter", function (e) {
       const fieldName = inputElement.getAttribute("leaky-field-name");
       const stack = new Error().stack.split("\n");
       stack.shift();
-      if( (stack.length>1) && (stack[1].startsWith('    at HTMLInputElement.recordInput (chrome-extension://') || stack[1].startsWith('    at HTMLInputElement.recordInput (moz-extension://'))){
+
+      if (
+        stack.length > 1 &&
+        (stack[1].startsWith('    at HTMLInputElement.recordInput (chrome-extension://') ||
+          stack[1].startsWith('    at HTMLInputElement.recordInput (moz-extension://'))
+      ) {
         return elValue;
       }
+
       const timeStamp = Date.now();
-      // mask the password field
-      const sniffValue = (fieldName === 'password') ? elValue.replace(/./g, '*') : elValue;
-      // send the sniff details to the background script
+      let sniffValue = elValue;
+
+      if (fieldName === "password") {
+        sniffValue = elValue.replace(/./g, "*");
+      }
+
       sendMessageToContentScript(
         { elValue: sniffValue, xpath, fieldName, stack, timeStamp },
-        "inputSniffed"
+        "inputSniffed",
+        (response) => {
+          if (response && response.leakedField) {
+            const leakedField = getElementByXpath(response.leakedField);
+            if (leakedField) {
+              highlightInputField(leakedField);
+            }
+          }
+        }
       );
 
       return elValue;
@@ -39,7 +71,6 @@ document.addEventListener("modifyInputElementSetterGetter", function (e) {
   });
 });
 
-// Was taken from https://gist.github.com/iimos/e9e96f036a3c174d0bf4
 function getXPath(el) {
   try {
     if (typeof el === "string") {
@@ -56,7 +87,7 @@ function getXPath(el) {
       (x) => x.tagName == elTagName
     );
     return (
-      this.getXPath(el.parentElement) +
+      getXPath(el.parentElement) +
       "/" +
       elTagName.toLowerCase() +
       (sames.length > 1 ? `[${sames.indexOf(el) + 1}]` : "")
@@ -67,22 +98,17 @@ function getXPath(el) {
   }
 }
 
-document.addEventListener("leakOccured", function (e) {
-  let leakedField = getElementByXpath(e.detail);
-      if (leakedField) {
-        highlightInputField(leakedField);
-      }
-});
+function highlightInputField(inputField) {
+  if (minLogoPath && inputField.style) {
+    if (!inputField.style.background.includes('icons/logo_min.png')) {
+      inputField.style.background = `url("${minLogoPath}") 97.25% 10px no-repeat`;
+    }
+  }
+}
 
 document.addEventListener("passMinLogoPath", function (e) {
   minLogoPath = e.detail;
 });
-
-function highlightInputField(inputField) {
-  if (!inputField.style.background.includes('icons/logo_min.png')) {
-    inputField.style.background = 'url("'+ minLogoPath+ '") 97.25% 10px no-repeat'
-  }
-}
 
 function getElementByXpath(xpath) {
   return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
