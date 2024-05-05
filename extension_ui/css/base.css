@@ -1,9 +1,21 @@
-/* Font variables */
-$font-family-base: 'DDG_ProximaNova', 'Helvetica Neue', 'Helvetica', 'Segoe UI', 'Nimbus Sans L', 'Liberation Sans', 'Open Sans', FreeSans, Arial, sans-serif;
-$font-size-base: 14px;
-$color-text-base: #333333;
+/* Base Font Variables */
+@font-face {
+  font-family: 'DDG_ProximaNova';
+  src: url('path/to/DDG_ProximaNova.woff2') format('woff2'),
+       url('path/to/DDG_ProximaNova.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
 
-/* Status icons */
-/* Colors */
-$color-neutral-light: #d0d0d0;
-$color-neutral-dark: #88888
+$base-font-family: 'DDG_ProximaNova', 'Helvetica Neue', 'Helvetica', 'Segoe UI', 'Nimbus Sans L', 'Liberation Sans', 'Open Sans', FreeSans, Arial, sans-serif;
+$base-font-size: 14px;
+$base-text-color: #333333;
+
+/* Status Icons Colors */
+$status-icons-neutral-light: #d0d0d0;
+$status-icons-neutral-dark: #888888;
+
+/* Utilities */
+@function pxToRem($font-size-px) {
+  @return ($font-size-px / $base-font-size) * 1rem;
+}
