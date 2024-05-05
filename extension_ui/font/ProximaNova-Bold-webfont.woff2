@@ -1,23 +1,27 @@
 import re
-
+from collections import Counter
 
 def extract_email_domains(text):
+    """
+    Extract email domains from the given text and print them along with their counts.
+
+    :param text: The input text to extract email domains from.
+    :type text: str
+    """
+    if not text:
+        raise ValueError("Input text cannot be empty.")
+
     # Find all email addresses in the text
     email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     emails = re.findall(email_regex, text)
 
     # Extract and count the domains of the email addresses
-    domain_count = {}
-    for email in emails:
-        domain = email.split('@')[1]
-        if domain not in domain_count:
-            domain_count[domain] = 0
-        domain_count[domain] += 1
+    domains = [email.split('@')[1] for email in emails]
+    domain_count = Counter(domains)
 
     # Sort and print the domains and their counts
-    sorted_domain_count = sorted(domain_count.items(), key=lambda x: x[1], reverse=True)
-    for domain, count in sorted_domain_count:
-        print(f'{domain}: {count}')
+    for domain, count in domain_count.most_common():
+        print("{}: {}".format(domain, count))
 
 # Test the function
 text = 'Please send your feedback to john.doe@example.com, jane_doe@example.co.uk, and jim@example.org'
