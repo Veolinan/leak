@@ -1,142 +1,129 @@
-let pathPassed = false;
-const scriptNames = [
+// Define constants
+const SCRIPT_NAMES = [
   "page_scripts/page_script.js"
 ];
+const EXTENSION_STORAGE_KEY = "extension_switch";
+const MESSAGE_TYPES = {
+  GET_TAB_ID: "getTabId",
+  INPUT_SNIFFED: "inputSniffed",
+  REQ_LEAK_OCCURRED: "reqLeakOccurred",
+  INPUT_FIELD_CHANGED: "inputFieldChanged"
+};
 
-
-// Was taken from https://gist.github.com/iimos/e9e96f036a3c174d0bf4
-function getXPath(el) {
-  try {
-    if (typeof el === "string") {
-      return document.evaluate(el, document, null, 0, null);
-    }
-    if (!el || el.nodeType != 1) {
-      return "";
-    }
-    if (el.id) {
-      return `//*[@id='${el.id}']`;
-    }
-    const elTagName = el.tagName;
-    const sames = Array.from(el.parentNode.children).filter(
-      (x) => x.tagName == elTagName
-    );
-    return (
-      this.getXPath(el.parentElement) +
-      "/" +
-      elTagName.toLowerCase() +
-      (sames.length > 1 ? `[${sames.indexOf(el) + 1}]` : "")
-    );
-  } catch (error) {
-    console.log("Exception occured while getting xpath of element.", el);
-    return "";
-  }
-}
-
-chrome.storage.local.get(["extension_switch"], function (items) {
-  if(items['extension_switch']){
-    for (const script of scriptNames) {
-      let scriptPath = chrome.runtime.getURL(script);
-      injectPageScript(scriptPath);
-    }
+// Check if the extension is enabled
+chrome.storage.local.get([EXTENSION_STORAGE_KEY], (items) => {
+  if (items[EXTENSION_STORAGE_KEY]) {
+    injectScripts();
+    addEventListeners();
   }
 });
 
-let tabId;
+// Inject scripts
+function injectScripts() {
+  for (const script of SCRIPT_NAMES) {
+    const scriptPath = chrome.runtime.getURL(script);
+    injectPageScript(scriptPath);
+  }
+}
+
+// Inject a single script
 function injectPageScript(scriptPath) {
-  let s = document.createElement("script");
+  const s = document.createElement("script");
   s.src = scriptPath;
   s.async = false;
-  s.setAttribute("type", "text/javascript");
-  s.onload = function () {
-    this.remove();
-  };
-  (document.head || document.documentElement).appendChild(s);
-  // console.log("Inject finished", scriptPath);
+  s.type = "text/javascript";
+  s.onload = () => s.remove();
+  document.head.appendChild(s);
 }
 
-chrome.runtime.sendMessage({ type: "getTabId" }, (tabIdFromBg) => {
-  tabId = tabIdFromBg;
-});
-
-document.addEventListener("inputSniffed", function (e) {
-  let data = e.detail;
-  chrome.runtime.sendMessage({
-    type: "inputSniffed",
-    sniffDetails: { tabId, data },
-  });
-  // console.log(
-  //   `Input value ${data.inputValue} was read by a ${data.type} which is ${data.domain} from the ${data.fieldName} field whose xpath is ${data.xpath}.`
-  // );
-});
-
-
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-   if (request.message === 'reqLeakOccurred') {
-    if(!pathPassed){
-      let minLogoPath = chrome.runtime.getURL('icons/logo_min.png');
-        document.dispatchEvent(
-          new CustomEvent('passMinLogoPath', { detail: minLogoPath })
-        );
-        pathPassed = true;
-    }
-    request.xpaths.forEach(xpath => {
-      document.dispatchEvent(
-        new CustomEvent('leakOccured', { detail: xpath })
-      );
+// Get the tab ID
+function getTabId() {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: MESSAGE_TYPES.GET_TAB_ID }, (tabId) => {
+      resolve(tabId);
     });
-  }
-});
+  });
+}
 
+// Add event listeners
+async function addEventListeners() {
+  const tabId = await getTabId();
+  document.addEventListener("inputSniffed", (e) => {
+    const data = e.detail;
+    chrome.runtime.sendMessage({
+      type: MESSAGE_TYPES.INPUT_SNIFFED,
+      sniffDetails: { tabId, data },
+    });
+  });
+
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === MESSAGE_TYPES.REQ_LEAK_OCCURRED) {
+      handleLeakOccurred(request.xpaths);
+    }
+  });
+}
+
+// Handle leak occurred
+function handleLeakOccurred(xpaths) {
+  xpaths.forEach((xpath) => {
+    document.dispatchEvent(new CustomEvent("leakOccured", { detail: xpath }));
+  });
+}
+
+// Add event handler to an element
 function addEventHandlerToEl(inputEl, eventType, eventHandler) {
   inputEl.addEventListener(eventType, eventHandler);
 }
 
+// Record input
 function recordInput(event) {
-  let inputFields = [];
-  let url = document.location.href;
-  let PIIFields = document.querySelectorAll("[leaky-field-name]");
-  for (const inputField of PIIFields) {
-    let value = inputField.value;
-    if (value.length < 5) {
-      continue;
-    }
-    let xpath = getXPath(inputField);
-    let fieldName = inputField.getAttribute("leaky-field-name");
+  const inputFields = [];
+  const url = document.location.href;
+  const PII_FIELDS = document.querySelectorAll("[leaky-field-name]");
+
+  for (const inputField of PII_FIELDS) {
+    const value = inputField.value;
+    if (value.length < 5) continue;
+    const xpath = getXPath(inputField);
+    const fieldName = inputField.getAttribute("leaky-field-name");
     inputFields.push({ value, fieldName, xpath });
   }
+
   if (inputFields.length) {
     chrome.runtime.sendMessage({
-      type: "inputFieldChanged",
+      type: MESSAGE_TYPES.INPUT_FIELD_CHANGED,
       data: { url, inputFields },
     });
   }
 }
 
+// Add sniff listener to existing elements
 function addSniffListener2ExistingElements() {
-  let shownInputFields = getAllPIIFields(true);
+  const shownInputFields = getAllPIIFields(true);
+
   for (const inputEl of shownInputFields) {
-    let xpath = getXPath(inputEl.element);
+    const xpath = getXPath(inputEl.element);
     inputEl.element.setAttribute("leaky-field-name", inputEl.fieldName);
     document.dispatchEvent(
-      new CustomEvent('modifyInputElementSetterGetter', { detail: xpath })
+      new CustomEvent("modifyInputElementSetterGetter", { detail: xpath })
     );
     addEventHandlerToEl(inputEl.element, "input", recordInput);
   }
 }
 
-// add reference
+// Debounce
 function debounce(func, wait, immediate) {
   let timeout;
   return function () {
-    let context = this,
-      args = arguments;
-    let later = function () {
+    const context = this;
+    const args = arguments;
+    const later = function () {
       timeout = null;
       if (!immediate) {
         func.apply(context, args);
       }
     };
-    let callNow = immediate && !timeout;
+    const callNow = immediate && !timeout;
     clearTimeout(timeout);
     timeout = setTimeout(later, wait || 1000);
     if (callNow) {
@@ -145,31 +132,34 @@ function debounce(func, wait, immediate) {
   };
 }
 
+// Monitor PII elements
 function monitorPiiElements() {
-  // console.log('*****Debounced ****');
-  let shownInputFields = getAllPIIFields(true);
+  const shownInputFields = getAllPIIFields(true);
+
   for (const inputEl of shownInputFields) {
-    let xpath = getXPath(inputEl.element);
+    const xpath = getXPath(inputEl.element);
     inputEl.element.setAttribute("leaky-field-name", inputEl.fieldName);
     document.dispatchEvent(
-      new CustomEvent('modifyInputElementSetterGetter', { detail: xpath })
+      new CustomEvent("modifyInputElementSetterGetter", { detail: xpath })
     );
     addEventHandlerToEl(inputEl.element, "input", recordInput);
   }
 }
 
+// Add sniff listener to dynamically added elements
 function addSniffListener2DynamicallyAddedElements() {
-  // based on https://stackoverflow.com/questions/54017611
-  debouncedMonitorPiiEls = debounce(monitorPiiElements, 500);
-  let observer = new MutationObserver(function (mutations) {
-    mutations.forEach(function (mutation) {
+  const debouncedMonitorPiiEls = debounce(monitorPiiElements, 500);
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
       for (let i = 0; i < mutation.addedNodes.length; i++) {
-        // monitor the newly added input elements
-        debouncedMonitorPiiEls();
+        const addedInputEl = mutation.addedNodes[i];
+        if (addedInputEl.tagName && addedInputEl.tagName.toLowerCase() === "input") {
+          debouncedMonitorPiiEls();
+        }
       }
     });
   });
-  // start the Mutation Observer
+
   observer.observe(document, { childList: true, subtree: true });
 }
 
