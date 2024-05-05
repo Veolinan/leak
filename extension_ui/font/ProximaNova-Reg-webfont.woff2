@@ -1,8 +1,24 @@
-def print_pattern(n):
+def print_pattern(n: int) -> None:
+    """
+    Prints a pattern of stars with increasing and then decreasing width.
+
+    :param n: The number of rows in the pattern.
+    """
+    if n < 0:
+        raise ValueError('Number of rows must be non-negative')
+
     for i in range(n):
-        print(' ' * (n - i - 1) + '*' * (2 * i + 1))
+        print('{0:*<{1}}'.format('*', 2 * i + 1))
+
+    for i in range(n - 2, -1, -1):
+        print('{0:*<{1}}'.format('*', 2 * i + 1))
 
 
 if __name__ == '__main__':
-    n = int(input('Enter the number of rows: '))
-    print_pattern(n)
+    while True:
+        try:
+            n = int(input('Enter the number of rows: '))
+            print_pattern(n)
+            break
+        except ValueError:
+            print('Please enter an integer value.')
