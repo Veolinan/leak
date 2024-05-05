@@ -6,13 +6,13 @@ function getAutofillElements() {
     const shownElements = elements.map((el) => ({
       fieldName: el.fieldName,
       element: el.element,
-      isShown: isShown(el.element),
+      isShown: isShownElement(el.element),
     }));
     return shownElements;
   });
 }
 
-function _hasLabelMatchingRegex(element, regex) {
+const hasLabelMatchingRegex = (element, regex) => {
   if (element.labels && element.labels.length) {
     for (const label of element.labels) {
       if (regex.test(label.textContent)) {
@@ -22,27 +22,26 @@ function _hasLabelMatchingRegex(element, regex) {
   }
 
   return false;
-}
+};
 
-function isInferredUsernameField(element) {
-  const expr =
-    /user\.name|username|display\.name|displayname|user\.id|userid|screen\.name|screenname|benutzername|benutzer\.name|nickname|profile\.name|profilename/i;
+const isInferredUsernameField = (element) => {
+  const usernameRegex = /user\.name|username|display\.name|displayname|user\.id|userid|screen\.name|screenname|benutzername|benutzer\.name|nickname|profile\.name|profilename/i;
 
   if (element.autocomplete && element.autocomplete.fieldName === "username") {
     return true;
   }
 
   if (
-    _elementAttrsMatchRegex(element, expr) ||
-    _hasLabelMatchingRegex(element, expr)
+    elementAttrsMatchRegex(element, usernameRegex) ||
+    hasLabelMatchingRegex(element, usernameRegex)
   ) {
     return true;
   }
 
   return false;
-}
+};
 
-function _elementAttrsMatchRegex(element, regex) {
+const elementAttrsMatchRegex = (element, regex) => {
   if (
     regex.test(element.id) ||
     regex.test(element.name) ||
@@ -57,7 +56,7 @@ function _elementAttrsMatchRegex(element, regex) {
   }
 
   return false;
-}
+};
 
 function getUsernameFields() {
   const inputElements = document.getElementsByTagName("input");
@@ -66,7 +65,7 @@ function getUsernameFields() {
     .map((element) => ({
       fieldName: "username",
       element,
-      isShown: isShown(element),
+      isShown: isShownElement(element),
     }));
 }
 
@@ -74,7 +73,7 @@ function getPasswordFields() {
   return [...document.querySelectorAll("input[type=password]")].map((element) => ({
     fieldName: "password",
     element,
-    isShown: isShown(element),
+    isShown: isShownElement(element),
   }));
 }
 
@@ -83,10 +82,10 @@ function getEmailsByFathom() {
     return [...detectEmailInputs(document)].map((element) => ({
       fieldName: "email",
       element,
-      isShown: isShown(element),
+      isShown: isShownElement(element),
     }));
   } catch (error) {
-    console.log(`Error occured while finding email elements: ${error.message}`);
+    console.error(`Error occured while finding email elements: ${error.message}`);
     return [];
   }
 }
@@ -111,3 +110,7 @@ function getAllPIIFields(isShown) {
 
   return isShown ? allPIIFields.filter((element) => element.isShown) : allPIIFields;
 }
+
+const isShownElement = (element) => {
+  // Add your condition to check if the element is shown
+};
