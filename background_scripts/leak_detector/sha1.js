@@ -1,6 +1,13 @@
 /*
- * [js-sha1]{@link https://github.com/emn178/js-sha1}
+ * sha1.js
  *
- * @version 0.6.0
- * @author Chen, Yi-Cyuan [emn178@gmail.com]
- * @copyright Chen, Yi-Cyuan 2014-2
+ * A JavaScript implementation of the SHA-1 algorithm.
+ *
+ * @version 2.0.0
+ * @author Lee David Painter (www.leedp.com)
+ * @license MIT License
+ */
+
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    // AMD. Register as an anonymous module.
